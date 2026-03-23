@@ -2,62 +2,53 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <title>Simple News Viewer</title>
+    <title>Simple News Reader</title>
     <style>
-        /* 背景はダークグレイ、文字は緑色 */
-        body { 
-            background-color: #2f2f2f; 
-            color: #00ff00; 
-            font-family: 'Meiryo', sans-serif; 
+        /* 背景はダークグレー、文字は緑色 */
+        body {
+            background-color: #2c2c2c;
+            color: #00ff00;
+            font-family: 'Courier New', Courier, monospace;
             padding: 20px;
-            line-height: 1.6;
+            margin: 0;
         }
         h1 { border-bottom: 1px solid #00ff00; padding-bottom: 10px; }
-        .news-item { margin-bottom: 15px; font-size: 1.2rem; }
-        .loading { font-style: italic; color: #88ff88; }
+        .news-item { margin-bottom: 15px; list-style: none; }
+        a { color: #00ff00; text-decoration: none; }
+        a:hover { text-decoration: underline; }
     </style>
 </head>
 <body>
-
-    <h1>最新ニュース</h1>
-    <div id="news-container" class="loading">ニュースを読み込み中...</div>
+    <h1>Latest News</h1>
+    <ul id="news-list">読み込み中...</ul>
 
     <script>
-        async function fetchNews() {
-        const container = document.getElementById('news-container');
-        // 必ず https から始める
-        const rssUrl = "https://news.yahoo.co.jp";
-        const proxyUrl = `https://api.allorigins.win{encodeURIComponent(rssUrl)}`;
+        // Google ニュース RSS の URL (日本版・主要ニュース)
+        const rssUrl = 'https://news.google.com';
         
-        try {
-            const response = await fetch(proxyUrl);
-            if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-            
-            const data = await response.json();
-            const parser = new DOMParser();
-            const xmlDoc = parser.parseFromString(data.contents, "text/xml");
-            
-            // パースエラーのチェック
-            const parseError = xmlDoc.getElementsByTagName("parsererror");
-            if (parseError.length > 0) throw new Error("XML Parse Error");
+        // CORS回避とJSON変換のために rss2json API を使用 (登録不要の無料枠を利用)
+        const apiUrl = `https://api.rss2json.com{encodeURIComponent(rssUrl)}`;
 
-            const items = xmlDoc.querySelectorAll("item");
-            container.innerHTML = ""; // クリア
+        async function fetchNews() {
+            try {
+                const response = await fetch(apiUrl);
+                const data = await response.json();
 
-            items.forEach(item => {
-                const title = item.querySelector("title").textContent;
-                const div = document.createElement("div");
-                div.className = "news-item";
-                div.textContent = `> ${title}`;
-                container.appendChild(div);
-            });
+                const list = document.getElementById('news-list');
+                list.innerHTML = ''; // 「読み込み中」を消去
 
-        } catch (error) {
-            // エラー内容を画面に表示して原因を特定しやすくする
-            container.textContent = "Error: " + error.message;
-            console.error("詳細エラー:", error);
+                // ニュース項目をループで表示
+                data.items.forEach(item => {
+                    const li = document.createElement('li');
+                    li.className = 'news-item';
+                    li.innerHTML = `> <a href="${item.link}" target="_blank">${item.title}</a>`;
+                    list.appendChild(li);
+                });
+            } catch (error) {
+                document.getElementById('news-list').innerText = 'ニュースの取得に失敗しました。';
+                console.error('Error:', error);
+            }
         }
-    }
 
         // 実行
         fetchNews();
